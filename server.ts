@@ -1,10 +1,19 @@
 import { createServer } from "http";
-
 import { createRequestHandler } from "@remix-run/express";
 import compression from "compression";
 import express from "express";
 import morgan from "morgan";
 import { Server } from "socket.io";
+import { executeWeatherAgent } from "./app/services/agent.server.js";
+import { memory, weatherAgent } from "src/mastra/agents/index.js";
+import dotenv from "dotenv";
+
+dotenv.config({ path: './.env.development' });  // Шлях до твого .env файлу
+
+console.log(process.env.DATABASE_USER); // має вивести 'admin'
+console.log(process.env.DATABASE_PASSWORD); 
+console.log(process.env); // вивести всі змінні середовища
+
 
 const viteDevServer =
   process.env.NODE_ENV === "production"
@@ -33,13 +42,27 @@ const io = new Server(httpServer);
 // from a client
 io.on("connection", (socket) => {
   // from this point you are on the WS connection with a specific client
-  console.log(socket.id, "connected");
+  console.log('socket', socket.id, "connected");
 
-  socket.emit("confirmation", "connected!");
+  socket.emit("emit, confirmation", "connected!");
 
-  socket.on("event", (data) => {
-    console.log(socket.id, data);
-    socket.emit("event", "pong");
+  socket.on('user inquiry', async (msg) => {
+    console.log('message: ', msg.input);
+    // await executeWeatherAgent(msg.input, msg.threadId, msg.userId);
+
+  const { uiMessages } = await memory.query({
+    threadId: "123",
+    selectBy: {
+      last: 50,
+    },
+  });
+
+  console.log('uiMessages: ', uiMessages);
+    return 'hello'
+  });
+
+  socket.on('disconnect', () => {
+    console.log('socket', socket.id, 'disconnected');
   });
 });
 
@@ -68,7 +91,7 @@ app.use(morgan("tiny"));
 // handle SSR requests
 app.all("*", remixHandler);
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3005;
 
 // instead of running listen on the Express app, do it on the HTTP server
 httpServer.listen(port, () => {

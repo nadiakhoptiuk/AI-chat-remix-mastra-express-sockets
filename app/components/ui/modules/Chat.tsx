@@ -5,14 +5,15 @@ import { Button } from "~/components/ui/button";
 import { PaperPlaneIcon, StopIcon } from "@radix-ui/react-icons";
 import { useFetcher } from "@remix-run/react";
 import { useEffect, useState } from "react";
-
+import type { Socket } from "socket.io-client";
 export interface ChatProps {
-  chatId?: string;
   messages: Message[];
+  chatId?: string;
+  socket?: Socket;
 }
 
 export default function Chat({ 
-  messages, 
+  messages, socket
 }: ChatProps) {
   const threadId = "123";
   const userId = "user-1";
@@ -49,7 +50,9 @@ export default function Chat({
     setInput("");
 
     // Submit the form
-    fetcher.submit(formData, { method: "post" });
+    // fetcher.submit(formData, { method: "post" });
+    // console.log('socket', socket);
+    socket?.emit('user inquiry', {input, threadId, userId});
   };
 
 

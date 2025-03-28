@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { groq } from '@ai-sdk/groq';
 import { Agent } from '@mastra/core/agent';
 import { weatherTool } from '../tools';
@@ -5,8 +6,16 @@ import { PostgresStore } from "@mastra/pg";
 import { Memory } from "@mastra/memory";
 
 const storage = new PostgresStore({
-  connectionString: process.env.DATABASE_URL || '',
+  // connectionString: process.env.DATABASE_URL || '',
+  host: process.env.DATABASE_HOST || '',
+  port: parseInt(process.env.DATABASE_PORT || '5432'),
+  database: process.env.DATABASE_NAME || '',
+  user: process.env.DATABASE_USER || '',
+  password: encodeURI(process.env.DATABASE_PASSWORD || ' '),
 });
+
+console.log(typeof process.env.DATABASE_URL); 
+console.log(process.env.DATABASE_URL || ''); 
 
 export const memory = new Memory({
   storage,
@@ -45,5 +54,5 @@ export const weatherAgent = new Agent({
 `,
   model: groq('llama-3.3-70b-versatile'),
   tools: { weatherTool },
-  memory
+  memory: memory
 });

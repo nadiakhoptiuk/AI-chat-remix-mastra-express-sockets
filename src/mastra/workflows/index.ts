@@ -3,11 +3,9 @@ import { Agent } from '@mastra/core/agent';
 import { Step, Workflow } from '@mastra/core/workflows';
 import { z } from 'zod';
 
-const llm = groq('llama-3.3-70b-versatile');
-
 const agent = new Agent({
   name: 'Weather Agent',
-  model: llm,
+  model: groq('llama-3.3-70b-versatile'),
   instructions: `
         You are a local activities and travel expert who excels at weather-based planning. Analyze the weather data and provide practical activity recommendations.
 

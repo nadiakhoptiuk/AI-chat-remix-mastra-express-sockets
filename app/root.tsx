@@ -6,11 +6,8 @@ import {
   ScrollRestoration,
 } from "@remix-run/react";
 import type { LinksFunction } from "@remix-run/node";
-import { useEffect, useState } from "react";
-import type { Socket } from "socket.io-client";
-import io from "socket.io-client";
 
-import { SocketProvider } from "~/context";
+// import { SocketProvider } from "~/context";
 import "./tailwind.css";
 
 export const links: LinksFunction = () => [
@@ -35,6 +32,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Meta />
         <Links />
       </head>
+
       <body className="min-h-screen bg-background font-sans antialiased">
         {children}
         <ScrollRestoration />
@@ -45,26 +43,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  const [socket, setSocket] = useState<Socket>();
-
-  useEffect(() => {
-    const socket = io();
-    setSocket(socket);
-    return () => {
-      socket.close();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!socket) return;
-    socket.on("confirmation", (data) => {
-      console.log(data);
-    });
-  }, [socket]);
+ 
 
   return (
-    <SocketProvider socket={socket}>
+    // <SocketProvider socket={socket}>
       <Outlet />
-    </SocketProvider>
+    // </SocketProvider>
   );
 }
