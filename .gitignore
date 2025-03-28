@@ -1,5 +1,53 @@
-node_modules
+# Dependencies
+/node_modules
 
+# Environment
+.env*
+.env.development
+
+# Build
+/build
+/public/build
+
+# Cache
+/.git
+
+# IDE
+.vscode
+.idea
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+
+# Testing
+/coverage
+
+
+.env
+.env.local
+.env.development
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Remix
 /.cache
 /build
 .env
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Misc
+*.log
+.vercel
+.netlify
+
+# Docker
+docker/
