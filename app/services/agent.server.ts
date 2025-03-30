@@ -1,3 +1,4 @@
+import { Socket } from 'socket.io-client';
 import { weatherAgent, memory } from '../../src/mastra/agents';
 import type { Message } from '~/types/chat';
 
@@ -52,48 +53,50 @@ class AgentExecutionManager {
 export const agentExecutionManager = AgentExecutionManager.getInstance();
 
 
-
-export async function executeWeatherAgent(input: string, threadId: string, resourceId: string): Promise<Pick<Message, 'id' | 'role' | 'content' | 'createdAt'>> {
+export async function executeWeatherAgent(input: string, threadId: string, resourceId: string, socket: Socket): Promise<Pick<Message, 'id' | 'role' | 'content' | 'createdAt'>> {
   try {    
     // Create an abort controller for this execution
     const abortController = agentExecutionManager.createController(threadId);
-    
-    // Use the stream method to demonstrate longer running process that can be aborted
-    console.log('stream is gonna start')
    
-    // const agentStream = await weatherAgent.stream([{role: 'user', content: input}], {
-    //   threadId,
-    //   resourceId,
-    //   abortSignal: abortController.signal,
-    // });
-    const agentStream = await weatherAgent.generate([{role: 'user', content: input}], {
+    const agentStream = await weatherAgent.stream([{role: 'user', content: input}], {
       threadId,
       resourceId,
       abortSignal: abortController.signal,
     });
 
-    // let fullResponse = '';
-    //  try {
-    //    for await (const chunk of agentStream.textStream) {
-    //      fullResponse += chunk;
-    //      // In a real app, you might want to send each chunk to the client
-    //      // This is just for demonstration purposes
-    //    }
-    //  } catch (error) {
-    //    // Check if this was aborted
-    //    if (error instanceof DOMException && error.name === 'AbortError') {
-    //      throw error; // Re-throw to be caught by outer catch block
-    //    }
-    //    console.error('Error during streaming:', error);
-    //  }
+    const responseId = memory.generateId();
+
+    let fullResponse = '';
+    try {
+      for await (const chunk of agentStream.textStream) {
+        console.log('chunk', chunk);
+        fullResponse += chunk;
+        
+        // Only emit intermediate results, not the final result
+        // This will be emitted by the caller
+        socket.emit('ai response', {
+          id: responseId,
+          role: 'assistant',
+          content: fullResponse || 'No response generated',
+          createdAt: new Date().toISOString(),
+        });
+      }
+     } catch (error) {
+       // Check if this was aborted
+       if (error instanceof DOMException && error.name === 'AbortError') {
+         throw error; // Re-throw to be caught by outer catch block
+       }
+       console.error('Error during streaming:', error);
+     }
     
     // If we completed successfully, remove the controller
     agentExecutionManager.abortExecution(threadId);
     
+    // Return the final complete response
     return {
-      id: memory.generateId(),
+      id: responseId,
       role: 'assistant',
-      content: agentStream.text || 'No response generated',
+      content: fullResponse || 'No response generated',
       createdAt: new Date().toISOString(),
     };
   } catch (error) {

@@ -47,10 +47,10 @@ export class MastraStorageManager {
    */
   public getStorage(): PostgresStore {
     if (!this.storageInstance) {
-      console.log('Storage instance is', this.storageInstance)
+      // console.log('Storage instance is', this.storageInstance)
       this.storageInstance = this.initializeStorage();
     }
-    console.log('Storage instance: ', this.storageInstance)
+    // console.log('Storage instance: ', this.storageInstance)
     return this.storageInstance as PostgresStore;
   }
 
