@@ -26,13 +26,17 @@ export default function Chat({
    useEffect(() => {
     // Update shownMessages when prop messages change
     setShownMessages(messages);
-  }, [messages]);
-
+   }, [messages]);
+  
+  useEffect(() => {
+    socket?.on("ai response", (response) => {
+      setShownMessages((prev) => [...prev, response]);
+    });
+  }, [socket])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
   };
-
 
   // Handle form submission manually to ensure proper clearing and prevent default
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -54,7 +58,6 @@ export default function Chat({
     // console.log('socket', socket);
     socket?.emit('user inquiry', {input, threadId, userId});
   };
-
 
   //Function to abort the agent execution
   const handleAbort = () => {
