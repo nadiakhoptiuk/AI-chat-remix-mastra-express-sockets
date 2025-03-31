@@ -1,10 +1,10 @@
-import type { Message } from "~/types/chat";
+import type { AiResponse, Message } from "~/types/chat";
 import { ChatMessageList } from "~/components/ui/chat/chat-message-list";
 import { ChatInput } from "~/components/ui/chat/chat-input";
 import { Button } from "~/components/ui/button";
 import { PaperPlaneIcon, StopIcon } from "@radix-ui/react-icons";
 import { useFetcher } from "@remix-run/react";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
 
 export interface ChatProps {
@@ -18,43 +18,47 @@ export default function Chat({
 }: ChatProps) {
   const threadId = "123";
   const userId = "user-1";
-  const fetcher = useFetcher();
   const abortFetcher = useFetcher();
   const [input, setInput] = useState("");
-  const isSubmitting = fetcher.state === "submitting";
   const [shownMessages, setShownMessages] = useState<Message[]>(messages);
   // Track current response ID to handle streaming updates
   const currentResponseId = useRef<string | null>(null);
   // Track if we're currently waiting for a response
-  const isWaitingForResponse = useRef(false);
+  const isWaitingForResponse = useRef<boolean>(false);
 
   useEffect(() => {
     // Update shownMessages when prop messages change
     setShownMessages(messages);
   }, [messages]);
-  
+
+
   // Setup socket event handler once
   useEffect(() => {
     if (!socket) return;
     
     // Define the handler outside the subscription so we can use it for cleanup
-    const handleAiResponse = (response: Message) => {
-      if (!response) return;
-      
-      console.log('AI response received:', response.id);
-      
+    const handleAiResponse = (response: AiResponse) => {
+      console.log('isWaitingForResponse', isWaitingForResponse.current);
+      console.log('response.isLastChunk', response.isLastChunk);
+      // if (!response) return;
+      if (response.isLastChunk) {
+        currentResponseId.current = null;
+        isWaitingForResponse.current = false;
+        return;
+      }
+    
       setShownMessages((prev) => {
         // Create a new array to ensure React detects the change
         const newMessages = [...prev];
         
         // Find if we already have a message from the assistant with this ID
         const existingIndex = newMessages.findIndex(
-          msg => msg.id === response.id
+            msg => msg.id === response.chunk.id
         );
         
         if (existingIndex >= 0) {
           // Update existing message
-          newMessages[existingIndex] = response;
+          newMessages[existingIndex] = response.chunk;
         } else {
           // If this is a message from a new ID and we have a currentResponseId,
           // we should replace the message with that ID
@@ -64,33 +68,26 @@ export default function Chat({
             
           if (currentResponseIndex >= 0) {
             // Replace the old response with the new one
-            newMessages[currentResponseIndex] = response;
+            newMessages[currentResponseIndex] = response.chunk;
           } else {
             // This is a completely new message
-            newMessages.push(response);
+            newMessages.push(response.chunk);
           }
-          
-          // Update the current response ID reference
-          currentResponseId.current = response.id;
         }
-        
-        // Mark that we're no longer waiting for a response once we get something
-        isWaitingForResponse.current = false;
         
         return newMessages;
       });
     };
     
-    // // Clean up previous listeners to avoid duplicates
-    // socket.off("ai response");
-    
     // Set up the event listener
     socket.on("ai response", handleAiResponse);
-  }, [socket]);
+  }, [socket, currentResponseId]);
+
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
   };
+
 
   // Handle form submission manually to ensure proper clearing and prevent default
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -103,8 +100,9 @@ export default function Chat({
     formData.append("threadId", threadId);
     formData.append("userId", userId);
     
-    // Reset the current response ID when starting a new conversation
-    currentResponseId.current = null;
+    //TODO Generate id
+    const responseId = '216';
+    currentResponseId.current = responseId;
 
     // Add user message to the chat
     const userMessage: Message = { 
@@ -116,9 +114,10 @@ export default function Chat({
     
     setShownMessages(prev => [...prev, userMessage]);
     setInput("");
+    isWaitingForResponse.current = true;
 
     // Send the message to the server
-    socket?.emit('user inquiry', {input, threadId, userId});
+    socket?.emit('user inquiry', {input, threadId, userId, responseId});
   };
 
   //Function to abort the agent execution
@@ -164,10 +163,10 @@ export default function Chat({
             onChange={handleInputChange}
             placeholder="Type a message..."
             name="input" 
-            disabled={isSubmitting || isWaitingForResponse.current}
+            disabled={isWaitingForResponse.current}
           />
 
-          {isWaitingForResponse.current ? (
+          {isWaitingForResponse.current === true ? (
             <Button 
               type="button" 
               size="icon" 
@@ -183,7 +182,7 @@ export default function Chat({
               type="submit" 
               size="icon" 
               className="shrink-0" 
-              disabled={!input.trim() || isWaitingForResponse.current}
+              disabled={!input.trim()}
             >
               <PaperPlaneIcon className="h-4 w-4" />
             </Button>

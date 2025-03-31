@@ -7,6 +7,7 @@ import { MastraStorageManager } from '../storage';
 
 // Get the storage manager instance
 const storageManager = MastraStorageManager.getInstance();
+
 // Get the storage instance
 const storage = storageManager.getStorage();
 

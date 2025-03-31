@@ -1,6 +1,6 @@
 import { Socket } from 'socket.io-client';
 import { weatherAgent, memory } from '../../src/mastra/agents';
-import type { Message } from '~/types/chat';
+import type { AiResponse } from '~/types/chat';
 
 // Store for active agent executions by thread ID
 class AgentExecutionManager {
@@ -53,7 +53,7 @@ class AgentExecutionManager {
 export const agentExecutionManager = AgentExecutionManager.getInstance();
 
 
-export async function executeWeatherAgent(input: string, threadId: string, resourceId: string, socket: Socket): Promise<Pick<Message, 'id' | 'role' | 'content' | 'createdAt'>> {
+export async function executeWeatherAgent(input: string, threadId: string, resourceId: string, socket: Socket, responseId: string): Promise<AiResponse> {
   try {    
     // Create an abort controller for this execution
     const abortController = agentExecutionManager.createController(threadId);
@@ -62,23 +62,34 @@ export async function executeWeatherAgent(input: string, threadId: string, resou
       threadId,
       resourceId,
       abortSignal: abortController.signal,
+      memoryOptions: {
+        workingMemory: {
+          enabled: true,
+        },
+      },
+      onStepFinish: (step) => {
+        console.log('step', step);
+      },
+      onFinish: () => {
+        socket.emit('ai response', { chunk: null, isLastChunk: true });
+      }
     });
-
-    const responseId = memory.generateId();
 
     let fullResponse = '';
     try {
       for await (const chunk of agentStream.textStream) {
-        console.log('chunk', chunk);
         fullResponse += chunk;
         
         // Only emit intermediate results, not the final result
         // This will be emitted by the caller
         socket.emit('ai response', {
-          id: responseId,
-          role: 'assistant',
-          content: fullResponse || 'No response generated',
-          createdAt: new Date().toISOString(),
+          chunk: {
+            id: responseId,
+            role: 'assistant',
+            content: fullResponse || 'No response generated',
+            createdAt: new Date().toISOString(),
+          },
+          isLastChunk: false
         });
       }
      } catch (error) {
@@ -94,10 +105,13 @@ export async function executeWeatherAgent(input: string, threadId: string, resou
     
     // Return the final complete response
     return {
-      id: responseId,
-      role: 'assistant',
-      content: fullResponse || 'No response generated',
-      createdAt: new Date().toISOString(),
+      chunk: {
+        id: responseId,
+        role: 'assistant',
+        content: fullResponse || 'No response generated',
+        createdAt: new Date().toISOString(),
+      },
+      isLastChunk: true
     };
   } catch (error) {
     console.error('Weather agent error:', error);
@@ -105,10 +119,13 @@ export async function executeWeatherAgent(input: string, threadId: string, resou
     // Check if this is an AbortError
     if (error instanceof DOMException && error.name === 'AbortError') {
       return {
-        id: memory.generateId(),
-        role: 'assistant',
-        content: 'The operation was cancelled by the user.',
-        createdAt: new Date().toISOString(),
+        chunk: {
+          id: memory.generateId(),
+          role: 'assistant',
+          content: 'The operation was cancelled by the user.',
+          createdAt: new Date().toISOString(),
+        },
+        isLastChunk: true
       };
     }
     
@@ -122,11 +139,14 @@ export async function executeWeatherAgent(input: string, threadId: string, resou
       type: 'text'
     });
     
-    return {
-      id: memory.generateId(),
-      role: 'assistant',
-      content: errorMessage,
-      createdAt: new Date().toISOString(),
+    return {  
+      chunk: {
+        id: memory.generateId(),
+        role: 'assistant',
+        content: errorMessage,
+        createdAt: new Date().toISOString(),
+      },
+      isLastChunk: true
     };
   }
 }

@@ -4,3 +4,8 @@ export type Message = {
   content: string;
   createdAt: Date | string;
 }
+
+export type AiResponse = {
+  chunk: Pick<Message, 'id' | 'role' | 'content' | 'createdAt'>,
+  isLastChunk: boolean
+}

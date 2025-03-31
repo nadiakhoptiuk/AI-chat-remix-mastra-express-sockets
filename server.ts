@@ -43,7 +43,7 @@ io.on("connection", (socket) => {
   socket.on('user inquiry', async (msg) => {
     console.log('user message: ', msg.input);
     
-    const response = await executeWeatherAgent(msg.input, msg.threadId, msg.userId, socket);
+    const response = await executeWeatherAgent(msg.input, msg.threadId, msg.userId, socket, msg.responseId);
 
     socket.emit('ai response', response)
   });
