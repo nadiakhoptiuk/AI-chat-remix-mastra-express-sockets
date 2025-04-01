@@ -6,15 +6,13 @@ import { Message } from "~/types/chat";
 import { io } from "socket.io-client";
 import { useEffect , useState } from "react";
 import type { Socket } from "socket.io-client";
-import { mastraClient } from "server";
+import { mastraClient } from "~/lib/mastra";
 
 export async function loader() {
   const threadId = "123";
   const resourceId = "user-1";
 
-  const existingThread = await mastraClient.getMemoryThread(threadId, resourceId);
-
-  console.log("existingThread: >>>", existingThread);
+  const existingThread = await mastraClient.getMemoryThread(threadId, 'weatherAgent');
 
   if (!existingThread) {
     const newThread = await mastraClient.createMemoryThread({
@@ -32,18 +30,10 @@ export async function loader() {
     };
   }
  
-  // const { uiMessages } = await mastraClient.getMemoryThreads({
-  //   threadId: existingThread.id,
-  //   selectBy: {
-  //     last: 50,
-  //   },
-  // });
-  const uiMessages = []
+  const { uiMessages } = await existingThread.getMessages();
 
   // Convert and filter the messages to our app's Message format
   const filteredMessages = uiMessages.filter(msg => msg.content !== '' && (msg.role === 'assistant' || msg.role === 'user'));
-
-  // console.log("filteredMessages for UI:", filteredMessages);
 
   return {
     messages: filteredMessages as Message[]

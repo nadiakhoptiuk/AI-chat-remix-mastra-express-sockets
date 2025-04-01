@@ -1,7 +1,8 @@
 import { Socket } from 'socket.io-client';
 import type { AiResponse } from '~/types/chat';
 import { maskStreamTags } from '@mastra/core/utils';
-import { mastraClient } from 'server';
+import { mastraClient } from '~/lib/mastra';
+import { compareResponsesAndGetResult, removeTags } from './removeTags';
 
 // Store for active agent executions by thread ID
 class AgentExecutionManager {
@@ -57,71 +58,61 @@ export const agentExecutionManager = AgentExecutionManager.getInstance();
 export async function executeWeatherAgent(input: string, threadId: string, resourceId: string, socket: Socket, responseId: string): Promise<AiResponse> {
   try {    
     // Create an abort controller for this execution
-    const abortController = agentExecutionManager.createController(threadId);
-    
-    console.log('EXECUTING storage.egetThreadsByResourceId >>>>');
+    // const abortController = agentExecutionManager.createController(threadId);
 
     const weatherAgent = mastraClient.getAgent('weatherAgent');
    
-    const response = await weatherAgent.stream([{role: 'user', content: input}], {
+    const response = await weatherAgent.stream({
+      messages: [{ role: 'user', content: input }],
       threadId,
       resourceId,
-      abortSignal: abortController.signal,
+      // abortSignal: abortController.signal,
       memoryOptions: {
-        workingMemory: {
-          enabled: true,
-        },
+        workingMemory: { enabled: true },
       },
-      onFinish: ({ 
-          finishReason,
-        }) => {
-            // if (finishReason === 'stop') {
-              socket.emit('ai response', { chunk: null, isLastChunk: true });
-            // }
-          }
-        });
+      
+      onFinish: ({
+        finishReason,
+      }) => {
+        // if (finishReason === 'stop') {
+          socket.emit('ai response', { chunk: null, isLastChunk: true });
+        // }
+      }
+    });
+   
+    let fullPermanentResponse = ''
+    
+    response.processDataStream({
+      onTextPart: (text: string) => {
+        fullPermanentResponse += text; //записуємо всі частини відповіді
 
-    let fullResponse = '';
-    try {
-      for await (const chunk of maskStreamTags(response.textStream, 'workingMemory')) {
-        fullResponse += chunk;
-        
-        // Only emit intermediate results, not the final result
-        // This will be emitted by the caller
+        const result = compareResponsesAndGetResult(fullPermanentResponse);
+
         socket.emit('ai response', {
           chunk: {
             id: responseId,
             role: 'assistant',
-            content: fullResponse || 'No response generated',
+            content: result || 'No response generated',
             createdAt: new Date().toISOString(),
           },
           isLastChunk: false
         });
-      }
-     } catch (error) {
-       // Check if this was aborted
-       if (error instanceof DOMException && error.name === 'AbortError') {
-         throw error; // Re-throw to be caught by outer catch block
-       }
-       console.error('Error during streaming:', error);
-    }
-    
-    //  mastraClient.saveMessageToMemory({ messages: [{threadId,
-    //       content: fullResponse,
-    //       role: 'assistant',
-    //       type: 'text',}],
-    //       // agentId: 'weatherAgent',
-    //     });
+      },
+      onErrorPart: (error) => {
+        console.error('error: >>>', error);
+      },
+    });
     
     // If we completed successfully, remove the controller
-    agentExecutionManager.abortExecution(threadId);
+    // agentExecutionManager.abortExecution(threadId);
+    const result = removeTags(fullPermanentResponse, 'working_memory') 
     
     // Return the final complete response
     return {
       chunk: {
         id: responseId,
         role: 'assistant',
-        content: fullResponse || 'No response generated',
+        content: result || 'No response generated',
         createdAt: new Date().toISOString(),
       },
       isLastChunk: true
@@ -132,12 +123,12 @@ export async function executeWeatherAgent(input: string, threadId: string, resou
     // Check if this is an AbortError
     if (error instanceof DOMException && error.name === 'AbortError') {
       return {
-        // chunk: {
-        //   // id: memory.generateId(),
-        //   role: 'assistant',
-        //   content: 'The operation was cancelled by the user.',
-        //   createdAt: new Date().toISOString(),
-        // },
+        chunk: {
+          id: responseId,
+          role: 'assistant',
+          content: 'The operation was cancelled by the user.',
+          createdAt: new Date().toISOString(),
+        },
         isLastChunk: true
       };
     }
@@ -154,7 +145,7 @@ export async function executeWeatherAgent(input: string, threadId: string, resou
     
     return {  
       chunk: {
-        // id: memory.generateId(),
+        id: responseId,
         role: 'assistant',
         content: errorMessage,
         createdAt: new Date().toISOString(),
@@ -168,4 +159,4 @@ export async function executeWeatherAgent(input: string, threadId: string, resou
 // Function to abort an ongoing agent execution
 export function abortAgentExecution(threadId: string): boolean {
   return agentExecutionManager.abortExecution(threadId);
-} 
+}

@@ -6,6 +6,7 @@ import { PaperPlaneIcon, StopIcon } from "@radix-ui/react-icons";
 import { useFetcher } from "@remix-run/react";
 import { useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
+import { v4 as uuid } from 'uuid'
 
 export interface ChatProps {
   messages: Message[];
@@ -101,8 +102,7 @@ export default function Chat({
     formData.append("threadId", threadId);
     formData.append("userId", userId);
     
-    //TODO Generate id
-    const responseId = '216';
+    const responseId = uuid();
     currentResponseId.current = responseId;
 
     // Add user message to the chat

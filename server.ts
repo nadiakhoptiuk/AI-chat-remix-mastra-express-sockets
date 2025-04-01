@@ -6,20 +6,8 @@ import morgan from "morgan";
 import { Server } from "socket.io";
 import { executeWeatherAgent } from "./app/services/agent.server.js";
 import dotenv from "dotenv";
-import { MastraClient } from '@mastra/client-js';
 
 dotenv.config({ path: './.env.development' });  // Шлях до твого .env файлу
-
-let mastraClientInstance: any;
-
-export const mastraClient = (() => {
-  if (!mastraClientInstance) {
-    mastraClientInstance = new MastraClient({
-      baseUrl: process.env.MASTRA_API_URL || 'http://localhost:4111',
-    });
-  }
-  return mastraClientInstance;
-})();
 
 const viteDevServer =
   process.env.NODE_ENV === "production"
