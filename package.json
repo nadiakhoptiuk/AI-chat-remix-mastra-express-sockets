@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@ai-sdk/groq": "^1.2.1",
+    "@mastra/client-js": "^0.1.13",
     "@mastra/core": "^0.7.0",
     "@mastra/memory": "^0.2.6",
     "@mastra/pg": "^0.2.6",

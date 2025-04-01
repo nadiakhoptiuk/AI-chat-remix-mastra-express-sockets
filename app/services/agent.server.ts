@@ -1,8 +1,7 @@
 import { Socket } from 'socket.io-client';
 import type { AiResponse } from '~/types/chat';
 import { maskStreamTags } from '@mastra/core/utils';
-import { memory, weatherAgent } from 'src/mastra/agents';
-import { storage } from 'src/mastra/storage';
+import { mastraClient } from 'server';
 
 // Store for active agent executions by thread ID
 class AgentExecutionManager {
@@ -61,11 +60,8 @@ export async function executeWeatherAgent(input: string, threadId: string, resou
     const abortController = agentExecutionManager.createController(threadId);
     
     console.log('EXECUTING storage.egetThreadsByResourceId >>>>');
-    console.log( {
-      storageExists: !!storage,
-      agentExists: !!weatherAgent,
-      memoryExists: !!memory,
-    });
+
+    const weatherAgent = mastraClient.getAgent('weatherAgent');
    
     const response = await weatherAgent.stream([{role: 'user', content: input}], {
       threadId,
@@ -110,12 +106,12 @@ export async function executeWeatherAgent(input: string, threadId: string, resou
        console.error('Error during streaming:', error);
     }
     
-     memory.addMessage({
-          threadId,
-          content: fullResponse,
-          role: 'assistant',
-          type: 'text',
-        });
+    //  mastraClient.saveMessageToMemory({ messages: [{threadId,
+    //       content: fullResponse,
+    //       role: 'assistant',
+    //       type: 'text',}],
+    //       // agentId: 'weatherAgent',
+    //     });
     
     // If we completed successfully, remove the controller
     agentExecutionManager.abortExecution(threadId);
@@ -136,12 +132,12 @@ export async function executeWeatherAgent(input: string, threadId: string, resou
     // Check if this is an AbortError
     if (error instanceof DOMException && error.name === 'AbortError') {
       return {
-        chunk: {
-          id: memory.generateId(),
-          role: 'assistant',
-          content: 'The operation was cancelled by the user.',
-          createdAt: new Date().toISOString(),
-        },
+        // chunk: {
+        //   // id: memory.generateId(),
+        //   role: 'assistant',
+        //   content: 'The operation was cancelled by the user.',
+        //   createdAt: new Date().toISOString(),
+        // },
         isLastChunk: true
       };
     }
@@ -149,16 +145,16 @@ export async function executeWeatherAgent(input: string, threadId: string, resou
     const errorMessage = error instanceof Error ? error.message : 'Sorry, I encountered an error while fetching the weather information. Please try again.';
     
     // Store the error message with proper format
-    await memory.addMessage({
-      threadId: threadId,
-      role: 'assistant', 
-      content: errorMessage,
-      type: 'text'
-    });
+    // await memory.addMessage({
+    //   threadId: threadId,
+    //   role: 'assistant', 
+    //   content: errorMessage,
+    //   type: 'text'
+    // });
     
     return {  
       chunk: {
-        id: memory.generateId(),
+        // id: memory.generateId(),
         role: 'assistant',
         content: errorMessage,
         createdAt: new Date().toISOString(),

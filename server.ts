@@ -6,10 +6,20 @@ import morgan from "morgan";
 import { Server } from "socket.io";
 import { executeWeatherAgent } from "./app/services/agent.server.js";
 import dotenv from "dotenv";
-import { weatherAgent , memory } from "src/mastra/agents/index.js";
-import { storage } from "src/mastra/storage/index.js";
+import { MastraClient } from '@mastra/client-js';
 
 dotenv.config({ path: './.env.development' });  // Шлях до твого .env файлу
+
+let mastraClientInstance: any;
+
+export const mastraClient = (() => {
+  if (!mastraClientInstance) {
+    mastraClientInstance = new MastraClient({
+      baseUrl: process.env.MASTRA_API_URL || 'http://localhost:4111',
+    });
+  }
+  return mastraClientInstance;
+})();
 
 const viteDevServer =
   process.env.NODE_ENV === "production"
@@ -34,16 +44,18 @@ const httpServer = createServer(app);
 // And then attach the socket.io server to the HTTP server
 const io = new Server(httpServer);
 
+
+
 // Then you can use `io` to listen the `connection` event and get a socket
 // from a client
 io.on("connection", (socket) => {
   // from this point you are on the WS connection with a specific client
   console.log('socket', socket.id, "connected");
-  console.log("Inside WebSocket:", {
-      storageExists: !!storage,
-      agentExists: !!weatherAgent,
-      memoryExists: !!memory,
-    }, storage);
+  // console.log("Inside WebSocket:", {
+  //     storageExists: !!storage,
+  //     agentExists: !!weatherAgent,
+  //     memoryExists: !!memory,
+  //   }, storage);
 
   socket.emit("emit, confirmation", "connected!");
 

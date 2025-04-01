@@ -1,55 +1,26 @@
-// import { useEffect } from "react";
-
-// import { useSocket } from "~/context";
-
-// export default function Index() {
-//   const socket = useSocket();
-
-//   useEffect(() => {
-//     if (!socket) return;
-
-//     socket.on("event", (data) => {
-//       console.log(data);
-//     });
-
-//     socket.emit("event", "ping");
-//   }, [socket]);
-
-//   return (
-//     <div style={{ fontFamily: "system-ui, sans-serif", lineHeight: "1.8" }}>
-//       <h1>Welcome to Remix + Socket.io</h1>
-//       <div>
-//         <button type="button" onClick={() => socket?.emit("event", "ping")}>
-//           Send ping
-//         </button>
-//       </div>
-//       <p>See Browser console and Server terminal</p>
-//     </div>
-//   );
-// }
-
-
-
 import { ActionFunctionArgs } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
-import { memory } from "src/mastra/agents";
 import Chat from "~/components/ui/modules/Chat";
 import { agentResponseAction } from "~/services/agentResponseAction";
 import { Message } from "~/types/chat";
 import { io } from "socket.io-client";
 import { useEffect , useState } from "react";
 import type { Socket } from "socket.io-client";
+import { mastraClient } from "server";
 
 export async function loader() {
   const threadId = "123";
+  const resourceId = "user-1";
 
-  const existingThread = await memory.getThreadById({ threadId });
+  const existingThread = await mastraClient.getMemoryThread(threadId, resourceId);
+
+  console.log("existingThread: >>>", existingThread);
 
   if (!existingThread) {
-    const newThread = await memory.createThread({
-      threadId: threadId,
-      resourceId: 'user-1',
+    const newThread = await mastraClient.createMemoryThread({
       title: "Draft",
+      // threadId: threadId,
+      resourceId: resourceId,
       metadata: {
         category: "support", 
       }
@@ -61,12 +32,13 @@ export async function loader() {
     };
   }
  
-  const { uiMessages } = await memory.query({
-    threadId: existingThread.id,
-    selectBy: {
-      last: 50,
-    },
-  });
+  // const { uiMessages } = await mastraClient.getMemoryThreads({
+  //   threadId: existingThread.id,
+  //   selectBy: {
+  //     last: 50,
+  //   },
+  // });
+  const uiMessages = []
 
   // Convert and filter the messages to our app's Message format
   const filteredMessages = uiMessages.filter(msg => msg.content !== '' && (msg.role === 'assistant' || msg.role === 'user'));
