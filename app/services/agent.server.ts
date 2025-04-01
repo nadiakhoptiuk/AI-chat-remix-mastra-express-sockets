@@ -1,6 +1,8 @@
 import { Socket } from 'socket.io-client';
-import { weatherAgent, memory } from '../../src/mastra/agents';
 import type { AiResponse } from '~/types/chat';
+import { maskStreamTags } from '@mastra/core/utils';
+import { memory, weatherAgent } from 'src/mastra/agents';
+import { storage } from 'src/mastra/storage';
 
 // Store for active agent executions by thread ID
 class AgentExecutionManager {
@@ -57,8 +59,15 @@ export async function executeWeatherAgent(input: string, threadId: string, resou
   try {    
     // Create an abort controller for this execution
     const abortController = agentExecutionManager.createController(threadId);
+    
+    console.log('EXECUTING storage.egetThreadsByResourceId >>>>');
+    console.log( {
+      storageExists: !!storage,
+      agentExists: !!weatherAgent,
+      memoryExists: !!memory,
+    });
    
-    const agentStream = await weatherAgent.stream([{role: 'user', content: input}], {
+    const response = await weatherAgent.stream([{role: 'user', content: input}], {
       threadId,
       resourceId,
       abortSignal: abortController.signal,
@@ -67,17 +76,18 @@ export async function executeWeatherAgent(input: string, threadId: string, resou
           enabled: true,
         },
       },
-      onStepFinish: (step) => {
-        console.log('step', step);
-      },
-      onFinish: () => {
-        socket.emit('ai response', { chunk: null, isLastChunk: true });
-      }
-    });
+      onFinish: ({ 
+          finishReason,
+        }) => {
+            // if (finishReason === 'stop') {
+              socket.emit('ai response', { chunk: null, isLastChunk: true });
+            // }
+          }
+        });
 
     let fullResponse = '';
     try {
-      for await (const chunk of agentStream.textStream) {
+      for await (const chunk of maskStreamTags(response.textStream, 'workingMemory')) {
         fullResponse += chunk;
         
         // Only emit intermediate results, not the final result
@@ -98,7 +108,14 @@ export async function executeWeatherAgent(input: string, threadId: string, resou
          throw error; // Re-throw to be caught by outer catch block
        }
        console.error('Error during streaming:', error);
-     }
+    }
+    
+     memory.addMessage({
+          threadId,
+          content: fullResponse,
+          role: 'assistant',
+          type: 'text',
+        });
     
     // If we completed successfully, remove the controller
     agentExecutionManager.abortExecution(threadId);
@@ -150,6 +167,7 @@ export async function executeWeatherAgent(input: string, threadId: string, resou
     };
   }
 }
+
 
 // Function to abort an ongoing agent execution
 export function abortAgentExecution(threadId: string): boolean {

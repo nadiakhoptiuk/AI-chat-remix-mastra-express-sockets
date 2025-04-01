@@ -3,19 +3,13 @@ import { groq } from '@ai-sdk/groq';
 import { Agent } from '@mastra/core/agent';
 import { weatherTool } from '../tools';
 import { Memory } from "@mastra/memory";
-import { MastraStorageManager } from '../storage';
-
-// Get the storage manager instance
-const storageManager = MastraStorageManager.getInstance();
-
-// Get the storage instance
-const storage = storageManager.getStorage();
+import { storage } from '../storage';
 
 export const memory = new Memory({
-  storage,
+  storage: storage,
   options: {
     // Number of recent messages to include (false to disable)
-    lastMessages: 50,
+    lastMessages: 10,
     // Configure vector-based semantic search (false to disable)
     semanticRecall: {
       topK: 3, // Number of semantic search results

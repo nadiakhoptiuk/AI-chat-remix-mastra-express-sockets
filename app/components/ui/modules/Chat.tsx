@@ -26,6 +26,7 @@ export default function Chat({
   // Track if we're currently waiting for a response
   const isWaitingForResponse = useRef<boolean>(false);
 
+  
   useEffect(() => {
     // Update shownMessages when prop messages change
     setShownMessages(messages);

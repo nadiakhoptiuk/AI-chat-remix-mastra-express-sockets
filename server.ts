@@ -6,6 +6,8 @@ import morgan from "morgan";
 import { Server } from "socket.io";
 import { executeWeatherAgent } from "./app/services/agent.server.js";
 import dotenv from "dotenv";
+import { weatherAgent , memory } from "src/mastra/agents/index.js";
+import { storage } from "src/mastra/storage/index.js";
 
 dotenv.config({ path: './.env.development' });  // Шлях до твого .env файлу
 
@@ -37,6 +39,11 @@ const io = new Server(httpServer);
 io.on("connection", (socket) => {
   // from this point you are on the WS connection with a specific client
   console.log('socket', socket.id, "connected");
+  console.log("Inside WebSocket:", {
+      storageExists: !!storage,
+      agentExists: !!weatherAgent,
+      memoryExists: !!memory,
+    }, storage);
 
   socket.emit("emit, confirmation", "connected!");
 

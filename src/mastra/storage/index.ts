@@ -38,7 +38,6 @@ export class MastraStorageManager {
       user: process.env.DATABASE_USER,
       password: process.env.DATABASE_PASSWORD,
     });
-    
     return storage;
   }
 
@@ -47,10 +46,10 @@ export class MastraStorageManager {
    */
   public getStorage(): PostgresStore {
     if (!this.storageInstance) {
-      // console.log('Storage instance is', this.storageInstance)
+      console.log('this.storageInstance is >>>', !!this.storageInstance) 
       this.storageInstance = this.initializeStorage();
     }
-    // console.log('Storage instance: ', this.storageInstance)
+    console.log('this.storageInstance is >>>', !!this.storageInstance)
     return this.storageInstance as PostgresStore;
   }
 
@@ -61,3 +60,8 @@ export class MastraStorageManager {
     return this.storageInstance !== null;
   }
 } 
+// // Get the storage manager instance
+const storageManager = MastraStorageManager.getInstance();
+
+// // Get the storage instance
+export const storage = storageManager.getStorage();
