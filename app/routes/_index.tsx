@@ -15,7 +15,7 @@ export async function loader() {
   const existingThread = await mastraClient.getMemoryThread(threadId, 'weatherAgent');
 
   if (!existingThread) {
-    const newThread = await mastraClient.createMemoryThread({
+    await mastraClient.createMemoryThread({
       title: "Draft",
       // threadId: threadId,
       resourceId: resourceId,
@@ -24,7 +24,6 @@ export async function loader() {
       }
     });
 
-    console.log("New thread: >>>", newThread);
     return {
       messages: []
     };

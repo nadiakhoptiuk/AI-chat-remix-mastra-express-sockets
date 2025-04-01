@@ -40,8 +40,6 @@ export default function Chat({
     
     // Define the handler outside the subscription so we can use it for cleanup
     const handleAiResponse = (response: AiResponse) => {
-      console.log('isWaitingForResponse', isWaitingForResponse.current);
-      console.log('response.isLastChunk', response.isLastChunk);
       // if (!response) return;
       if (response.isLastChunk) {
         currentResponseId.current = null;
