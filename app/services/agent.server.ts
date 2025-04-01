@@ -1,8 +1,8 @@
 import { Socket } from 'socket.io-client';
 import type { AiResponse } from '~/types/chat';
-import { maskStreamTags } from '@mastra/core/utils';
 import { mastraClient } from '~/lib/mastra';
 import { compareResponsesAndGetResult, removeTags } from './removeTags';
+import { DefaultEventsMap } from 'socket.io';
 
 // Store for active agent executions by thread ID
 class AgentExecutionManager {
@@ -55,7 +55,7 @@ class AgentExecutionManager {
 export const agentExecutionManager = AgentExecutionManager.getInstance();
 
 
-export async function executeWeatherAgent(input: string, threadId: string, resourceId: string, socket: Socket, responseId: string): Promise<AiResponse> {
+export async function executeWeatherAgent(input: string, threadId: string, resourceId: string, socket: Socket<DefaultEventsMap, DefaultEventsMap>, responseId: string): Promise<AiResponse> {
   try {    
     // Create an abort controller for this execution
     // const abortController = agentExecutionManager.createController(threadId);
@@ -71,9 +71,7 @@ export async function executeWeatherAgent(input: string, threadId: string, resou
         workingMemory: { enabled: true },
       },
       
-      onFinish: ({
-        finishReason,
-      }) => {
+      onFinish: () => {
         // if (finishReason === 'stop') {
           socket.emit('ai response', { chunk: null, isLastChunk: true });
         // }

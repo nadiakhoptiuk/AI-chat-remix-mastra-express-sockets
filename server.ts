@@ -7,7 +7,7 @@ import { Server } from "socket.io";
 import { executeWeatherAgent } from "./app/services/agent.server.js";
 import dotenv from "dotenv";
 
-dotenv.config({ path: './.env.development' });  // Шлях до твого .env файлу
+dotenv.config({ path: './.env.development' });
 
 const viteDevServer =
   process.env.NODE_ENV === "production"
@@ -32,8 +32,6 @@ const httpServer = createServer(app);
 // And then attach the socket.io server to the HTTP server
 const io = new Server(httpServer);
 
-// Then you can use `io` to listen the `connection` event and get a socket
-// from a client
 io.on("connection", (socket) => {
   // from this point you are on the WS connection with a specific client
   console.log('socket', socket.id, "connected");

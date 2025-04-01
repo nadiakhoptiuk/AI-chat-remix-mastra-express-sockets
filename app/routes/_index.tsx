@@ -32,7 +32,7 @@ export async function loader() {
   const { uiMessages } = await existingThread.getMessages();
 
   // Convert and filter the messages to our app's Message format
-  const filteredMessages = uiMessages.filter(msg => msg.content !== '' && (msg.role === 'assistant' || msg.role === 'user'));
+  const filteredMessages = uiMessages.filter((msg: Message) => msg.content !== '' && (msg.role === 'assistant' || msg.role === 'user'));
 
   return {
     messages: filteredMessages as Message[]
