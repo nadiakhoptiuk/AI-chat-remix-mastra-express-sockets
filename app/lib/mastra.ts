@@ -1,6 +1,6 @@
 import { MastraClient } from "@mastra/client-js";
 
-let mastraClientInstance: any;
+let mastraClientInstance;
 
 export const mastraClient = (() => {
   if (!mastraClientInstance) {

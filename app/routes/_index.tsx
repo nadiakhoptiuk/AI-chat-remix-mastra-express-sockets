@@ -1,8 +1,6 @@
-import { ActionFunctionArgs } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import Chat from "~/components/ui/modules/Chat";
-import { agentResponseAction } from "~/services/agentResponseAction";
-import { Message } from "~/types/chat";
+import { Message, SystemMessage } from "~/types/chat";
 import { io } from "socket.io-client";
 import { useEffect , useState } from "react";
 import type { Socket } from "socket.io-client";
@@ -17,8 +15,9 @@ export async function loader() {
   if (!existingThread) {
     await mastraClient.createMemoryThread({
       title: "Draft",
-      // threadId: threadId,
-      resourceId: resourceId,
+      threadId: threadId,
+      resourceid: resourceId,
+      agentId: 'weatherAgent',
       metadata: {
         category: "support", 
       }
@@ -32,24 +31,11 @@ export async function loader() {
   const { uiMessages } = await existingThread.getMessages();
 
   // Convert and filter the messages to our app's Message format
-  const filteredMessages = uiMessages.filter((msg: Message) => msg.content !== '' && (msg.role === 'assistant' || msg.role === 'user'));
+  const filteredMessages = uiMessages.filter((msg: SystemMessage) => msg.content !== '' && (msg.role === 'assistant' || msg.role === 'user'));
 
   return {
     messages: filteredMessages as Message[]
   };
-}
-
-export async function action({ request }: ActionFunctionArgs) {
-  const formData = await request.formData();
-  const input = formData.get("input");
-  const threadId = formData.get("threadId");
-  const userId = formData.get("userId");
-    
-  await agentResponseAction(input as string, threadId as string, userId as string);
-
-  return {
-    success: true,
-  }
 }
 
 export default function IndexPage() {

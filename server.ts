@@ -4,7 +4,7 @@ import compression from "compression";
 import express from "express";
 import morgan from "morgan";
 import { Server } from "socket.io";
-import { executeWeatherAgent } from "./app/services/agent.server.js";
+import { executeWeatherAgent, agentExecutionManager } from "~/services/agent.server";
 import dotenv from "dotenv";
 
 dotenv.config({ path: './.env.development' });
@@ -36,7 +36,7 @@ io.on("connection", (socket) => {
   // from this point you are on the WS connection with a specific client
   console.log('socket', socket.id, "connected");
 
-  socket.emit("emit, confirmation", "connected!");
+  socket.emit("confirmation", "connected!");
 
   socket.on('user inquiry', async (msg) => {
     console.log('user message: ', msg.input);
@@ -44,6 +44,11 @@ io.on("connection", (socket) => {
     const response = await executeWeatherAgent(msg.input, msg.threadId, msg.userId, socket, msg.responseId);
 
     socket.emit('ai response', response)
+  });
+
+  socket.on('abort agent execution', async (msg) => {
+    const aborted = agentExecutionManager.abortExecution(msg.threadId);
+    console.log('abort result:', aborted);
   });
 
   socket.on('disconnect', () => {

@@ -119,15 +119,10 @@ export default function Chat({
     socket?.emit('user inquiry', {input, threadId, userId, responseId});
   };
 
+
   //Function to abort the agent execution
   const handleAbort = () => {
-    abortFetcher.submit(
-      {}, // No form data needed
-      { 
-        method: "post", 
-        action: `/api/abort/${threadId}` 
-      }
-    );
+    socket?.emit('abort agent execution', { threadId });
   };
   
   return (

@@ -1,8 +1,7 @@
-import { Socket } from 'socket.io-client';
+import { Socket , DefaultEventsMap } from 'socket.io';
 import type { AiResponse } from '~/types/chat';
 import { mastraClient } from '~/lib/mastra';
 import { compareResponsesAndGetResult, removeTags } from './removeTags';
-import { DefaultEventsMap } from 'socket.io';
 
 // Store for active agent executions by thread ID
 class AgentExecutionManager {
@@ -19,12 +18,13 @@ class AgentExecutionManager {
   }
 
   public createController(threadId: string): AbortController {
-    // If there's already an active execution for this thread, abort it first
-    this.abortExecution(threadId);
-    
-    // Create a new controller for this thread
-    const controller = new AbortController();
-    this.activeExecutions.set(threadId, controller);
+    let controller = this.activeExecutions.get(threadId);
+
+    if (!controller) {
+      controller = new AbortController();
+      this.activeExecutions.set(threadId, controller);
+    }
+
     return controller;
   }
 
@@ -34,12 +34,17 @@ class AgentExecutionManager {
 
   public abortExecution(threadId: string): boolean {
     const controller = this.activeExecutions.get(threadId);
+
     if (controller) {
       controller.abort();
-      this.activeExecutions.delete(threadId);
       return true;
     }
+
     return false;
+  }
+
+  public removeController(threadId: string): void {
+    this.activeExecutions.delete(threadId);
   }
 
   public clearAll(): void {
@@ -55,10 +60,10 @@ class AgentExecutionManager {
 export const agentExecutionManager = AgentExecutionManager.getInstance();
 
 
-export async function executeWeatherAgent(input: string, threadId: string, resourceId: string, socket: Socket<DefaultEventsMap, DefaultEventsMap>, responseId: string): Promise<AiResponse> {
+export async function executeWeatherAgent(input: string, threadId: string, resourceId: string, socket: Socket<DefaultEventsMap>, responseId: string): Promise<AiResponse> {
   try {    
     // Create an abort controller for this execution
-    // const abortController = agentExecutionManager.createController(threadId);
+    const abortController = agentExecutionManager.createController(threadId);
 
     const weatherAgent = mastraClient.getAgent('weatherAgent');
    
@@ -66,23 +71,24 @@ export async function executeWeatherAgent(input: string, threadId: string, resou
       messages: [{ role: 'user', content: input }],
       threadId,
       resourceId,
-      // abortSignal: abortController.signal,
+      // signal: abortController.signal,
       memoryOptions: {
         workingMemory: { enabled: true },
       },
-      
       onFinish: () => {
-        // if (finishReason === 'stop') {
-          socket.emit('ai response', { chunk: null, isLastChunk: true });
+        // if(finishedReason === 'stop') {
+        //   agentExecutionManager.removeController(threadId);
         // }
+        socket.emit('ai response', { chunk: null, isLastChunk: true });
       }
+
     });
    
     let fullPermanentResponse = ''
     
     response.processDataStream({
       onTextPart: (text: string) => {
-        fullPermanentResponse += text; //записуємо всі частини відповіді
+        fullPermanentResponse += text; 
 
         const result = compareResponsesAndGetResult(fullPermanentResponse);
 
@@ -101,8 +107,6 @@ export async function executeWeatherAgent(input: string, threadId: string, resou
       },
     });
     
-    // If we completed successfully, remove the controller
-    // agentExecutionManager.abortExecution(threadId);
     const result = removeTags(fullPermanentResponse, 'working_memory') 
     
     // Return the final complete response
@@ -117,9 +121,16 @@ export async function executeWeatherAgent(input: string, threadId: string, resou
     };
   } catch (error) {
     console.error('Weather agent error:', error);
+
+    if (error?.name === "AbortError") {
+      console.log("Fetch aborted successfully:", threadId);
+    }
     
     // Check if this is an AbortError
     if (error instanceof DOMException && error.name === 'AbortError') {
+      console.log('ABORT ERROR:, ABORTED', error);
+      agentExecutionManager.removeController(threadId);
+
       return {
         chunk: {
           id: responseId,
@@ -132,8 +143,8 @@ export async function executeWeatherAgent(input: string, threadId: string, resou
     }
     
     const errorMessage = error instanceof Error ? error.message : 'Sorry, I encountered an error while fetching the weather information. Please try again.';
-    
-    // Store the error message with proper format
+
+    // Store the error message with proper format (if needed)
     // await memory.addMessage({
     //   threadId: threadId,
     //   role: 'assistant', 
@@ -141,6 +152,7 @@ export async function executeWeatherAgent(input: string, threadId: string, resou
     //   type: 'text'
     // });
     
+    agentExecutionManager.removeController(threadId);
     return {  
       chunk: {
         id: responseId,
@@ -156,5 +168,7 @@ export async function executeWeatherAgent(input: string, threadId: string, resou
 
 // Function to abort an ongoing agent execution
 export function abortAgentExecution(threadId: string): boolean {
-  return agentExecutionManager.abortExecution(threadId);
+  const aborted = agentExecutionManager.abortExecution(threadId);
+  console.log('ABORT AGENT EXECUTION RESULT:', aborted);
+  return aborted;
 }
